@@ -129,7 +129,7 @@ class TrassirServer
      */
     public function getServerObjects(string $sdk_password)
     {
-        if (is_null($this->ip)) {
+        if (is_null($this->ip)) { //s
             throw new \InvalidArgumentException('You myst set IP before auth');
         }
         if (!$this->check_connection()) {
