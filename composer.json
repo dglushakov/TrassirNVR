@@ -1,0 +1,25 @@
+{
+  "name": "dglushakov/trassir",
+  "description": "lib for work with Trassir CCTV NVRs",
+  "license": "proprietary",
+  "authors": [
+    {
+      "name": "Denis Glushakov",
+      "email": "denis.glushakov@bk.ru"
+    }
+  ],
+  "autoload": {
+    "psr-4": {
+      "dglushakov\\trassir\\": "src/"
+    }
+  },
+  "autoload-dev": {
+    "psr-4": {
+      "dglushakov\\trassir\\tests\\": "tests/"
+    }
+  },
+  "require": {},
+  "require-dev": {
+    "phpunit/phpunit": "@stable"
+  }
+}
