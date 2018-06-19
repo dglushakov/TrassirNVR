@@ -9,6 +9,7 @@ class TrassirServer
      * @var string $name
      */
     private $name;
+
     /**
      * @var string|null $ip
      */
@@ -18,6 +19,13 @@ class TrassirServer
      * @var string $guid
      */
     private $guid;
+
+    /**
+     * array for handle list of channels from NMR
+     * @var array $channels
+     */
+    private $channels;
+
 
     private $stream_context; //тут храним контекст который нужен CURL для работы с неподписанными сертификатами
 
@@ -32,21 +40,19 @@ class TrassirServer
     }
 
     /**
-     * Get server Name
-     *
-     * @return string
+     * @return array
      */
-    public function getName()
+    public function getChannels(): array
     {
-        return $this->name;
+        return $this->channels;
     }
 
     /**
-     * @param string $name
+     * @return string
      */
-    public function setName(string $name)
+    public function getName(): string
     {
-        $this->name= $name;
+        return $this->name;
     }
 
     /**
@@ -63,14 +69,6 @@ class TrassirServer
     public function getGuid(): string
     {
         return $this->guid;
-    }
-
-    /**
-     * @param string $guid
-     */
-    public function setGuid(string $guid): void
-    {
-        $this->guid = $guid;
     }
 
 
@@ -124,6 +122,9 @@ class TrassirServer
 
 
     /**
+     * function to get all server objects (channels, IP-devices etc.) Also it set up servers Name and Guid
+     * also fills $this->channels array
+     *
      * @param string $sdk_password password for Trassir SDK
      * @return array
      */
@@ -140,6 +141,21 @@ class TrassirServer
             $comment_position = strripos($responseJson_str, '/*');    //отрезаем комментарий в конце ответа сервера
             $responseJson_str = substr($responseJson_str, 0, $comment_position);
             $objects = json_decode($responseJson_str, true);
+
+            foreach ($objects as $obj) {
+                if ($obj['class']=='Server') {
+                    $this->name = $obj['name'];
+                    $this->guid = $obj['guid'];
+                }
+                if ($obj['class']=='Channel') {
+                    $this->channels[] = [
+                        'name' => $obj['name'],
+                        'guid' =>$obj ['guid'],
+                        'parent' =>$obj ['parent'],
+                    ];
+                }
+            }
+
         return $objects;
     }
 
@@ -160,26 +176,8 @@ class TrassirServer
         $responseJson_str = substr($responseJson_str, 0, $comment_position);
         $server_health = json_decode($responseJson_str, true); //переводим JSON в массив
 
+
+        //TODO допилить тут же поверку всех каналов
         return $server_health;
     }
-
-    /**
-     * function for get NVR's name (that is configured on NVR locally)
-     * @param string $sdk_password
-     * @return bool|string
-     */
-    public function getServerName(string $sdk_password){
-        $objects = $this->getServerObjects($sdk_password);
-        $result = false;
-        if ($objects) {
-            foreach ($objects as $obj) {
-                if ($obj['class'] == 'Server') {
-                    $result = $obj['name'];
-                    break;
-                }
-            }
-        }
-        return $result;
-    }
-
 }

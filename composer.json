@@ -15,7 +15,7 @@
   },
   "autoload-dev": {
     "psr-4": {
-      "dglushakov\\trassir\\tests\\": "tests/"
+      "dglushakov\\trassir\\tests\\unit\\": "tests/"
     }
   },
   "require": {},
