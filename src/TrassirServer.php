@@ -159,7 +159,7 @@ class TrassirServer
         return $objects;
     }
 
-    public function getServerHealth($sid) // запрос здоровья, возвращает массив
+    public function getHealth($sid) // запрос здоровья, возвращает массив
     {
         if (is_null($this->ip)) {
             throw new \InvalidArgumentException('You myst set IP before auth');
@@ -176,8 +176,25 @@ class TrassirServer
         $responseJson_str = substr($responseJson_str, 0, $comment_position);
         $server_health = json_decode($responseJson_str, true); //переводим JSON в массив
 
+        $result = $server_health;
+        if(!empty($this->channels)) {
+            foreach ($this->channels as $channel) {
+                $url = 'https://' . trim($this->ip) . ':8080/settings/channels/' . $channel['guid'] . '/flags/signal?sid=' . trim($sid); //получения статуса канала
+                $responseJson_str = file_get_contents($url, NULL, $this->stream_context);
+                $comment_position = strripos($responseJson_str, '/*');    //отрезаем комментарий в конце ответа сервера
+                $responseJson_str = substr($responseJson_str, 0, $comment_position);
+                $channelHealth = json_decode($responseJson_str, true);
 
-        //TODO допилить тут же поверку всех каналов
-        return $server_health;
+                $channelsHealth[]=[
+                    'guid' => $channel['guid'],
+                    'signal' => $channelHealth['signal']
+                ];
+            }
+        $result = array_merge($server_health, $channelsHealth);
+        }
+
+
+
+        return $result;
     }
 }
