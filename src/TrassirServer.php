@@ -187,7 +187,7 @@ class TrassirServer
 
                 $channelsHealth[]=[
                     'guid' => $channel['guid'],
-                    'signal' => $channelHealth['signal']
+                    'signal' => $channelHealth['value']
                 ];
             }
         $result = array_merge($server_health, $channelsHealth);
