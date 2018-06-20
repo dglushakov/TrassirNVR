@@ -24,11 +24,11 @@ class TrassirServerTest extends TestCase
     public function testAuthorizationWhenServerIsOffline()
     {
         $server = new TrassirServer('10.18.66.99');
-        $this->assertEquals(false, $server->authorization('login', 'user'));
+        $this->assertEquals(false, $server->auth('login', 'user'));
     }
     public function testAuthorizationWithWrongUserAndPassword()
     {
         $server = new TrassirServer('10.18.250.33');
-        $this->assertFalse($server->authorization('wronguser', 'wringpassword'));
+        $this->assertFalse($server->auth('wronguser', 'wringpassword'));
     }
 }

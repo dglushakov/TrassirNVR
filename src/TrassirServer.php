@@ -100,7 +100,7 @@ class TrassirServer
      * @param string $password
      * @return bool|string
      */
-    public function authorization(string $user, string $password)
+    public function auth(string $user, string $password)
     {
         if (is_null($this->ip)) {
             throw new \InvalidArgumentException('You myst set IP before auth');
