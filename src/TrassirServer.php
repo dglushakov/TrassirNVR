@@ -136,7 +136,6 @@ class TrassirServer
      * function to get all server objects (channels, IP-devices etc.) Also it set up servers Name and Guid
      * also fills $this->channels array
      *
-     * @param string $sdk_password password for Trassir SDK
      * @return array
      */
     public function getServerObjects()
@@ -178,7 +177,7 @@ class TrassirServer
             throw new \InvalidArgumentException('Server is offline');
         }
         $this->auth();
-        echo $this->sid;
+
         if (!$this->sid) {
             throw new \InvalidArgumentException('You should make authorization() first to get sid');
         }
@@ -207,4 +206,47 @@ class TrassirServer
 
         return $result;
     }
+
+    public function saveScreenshot(array $channel, $folder = 'shots',\DateTime $timestamp = null){
+        if (is_null($this->ip)) {
+            throw new \InvalidArgumentException('You myst set IP before auth');
+        }
+        if (!$this->check_connection()) {
+            throw new \InvalidArgumentException('Server is offline');
+        }
+        $this->auth();
+
+        if (!$this->sid) {
+            throw new \InvalidArgumentException('You should make authorization() first to get sid');
+        }
+
+        if($timestamp ) {
+            $time = $timestamp->format('Ymd-His');
+        } else {
+            $time = '0';
+        }
+        //$time='0';
+
+        $img = 'https://' . trim($this->ip) . ':8080/screenshot/'.$channel['guid'].'?timestamp='.$time.'&sid='.trim($this->sid);
+        $path = $folder.'/shot_'.$channel['name'].rand(1,1000).$timestamp->format('YmdHis').'.jpg';
+        $curl = curl_init($img);
+        curl_setopt($curl, CURLOPT_HEADER, 0);
+        curl_setopt($curl, CURLOPT_RETURNTRANSFER, 1);
+        curl_setopt($curl, CURLOPT_BINARYTRANSFER,1);
+        curl_setopt($curl, CURLOPT_SSL_VERIFYHOST, 0);
+        curl_setopt($curl, CURLOPT_SSL_VERIFYPEER, 0);
+        $content = curl_exec($curl);
+        curl_close($curl);
+        if (file_exists($path)) :
+            unlink($path);
+        endif;
+        $fp = fopen($path,'x');
+        fwrite($fp, $content);
+        fclose($fp);
+
+        return $content;
+    }
+
+
+
 }
