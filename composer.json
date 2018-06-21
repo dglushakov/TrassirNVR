@@ -12,14 +12,5 @@
     "psr-4": {
       "dglushakov\\trassir\\": "src/"
     }
-  },
-  "autoload-dev": {
-    "psr-4": {
-      "dglushakov\\trassir\\tests\\unit\\": "tests/"
-    }
-  },
-  "require": {},
-  "require-dev": {
-    "phpunit/phpunit": "@stable"
   }
 }

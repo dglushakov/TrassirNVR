@@ -26,12 +26,23 @@ class TrassirServer
      */
     private $channels;
 
+    /**
+     * Variable for storage sessidon id
+     * @var string $sid
+     */
+    private $sid;
+    private $user;
+    private $password;
+    private $sdk_password;
 
     private $stream_context; //тут храним контекст который нужен CURL для работы с неподписанными сертификатами
 
-    public function __construct($ip)
+    public function __construct(string $ip, string $user, string $password, string $sdk_password)
     {
         $this->ip = $ip;
+        $this->user = $user;
+        $this->password = $password;
+        $this->sdk_password = $sdk_password;
         $this->stream_context = stream_context_create(['ssl' => [  //разрешаем принимать самоподписанные сертификаты от NVR
             'verify_peer' => false,
             'verify_peer_name' => false,
@@ -100,7 +111,7 @@ class TrassirServer
      * @param string $password
      * @return bool|string
      */
-    public function auth(string $user, string $password)
+    private function auth()
     {
         if (is_null($this->ip)) {
             throw new \InvalidArgumentException('You myst set IP before auth');
@@ -108,18 +119,18 @@ class TrassirServer
         if (!$this->check_connection()) {
             throw new \InvalidArgumentException('Server is offline');
         }
-        $sid = false;
+        $this->sid = false;
 
-        $url = 'https://' . trim($this->ip) . ':8080/login?username=' . trim($user) . '&password=' . trim($password);
+        $url = 'https://' . trim($this->ip) . ':8080/login?username=' . trim($this->user) . '&password=' . trim($this->password);
         $responseJson_str = file_get_contents($url, NULL, $this->stream_context);
         $server_auth = json_decode($responseJson_str, true); //переводим JSON в массив
         if ($server_auth['success'] == 1) {
-            //$conf['sid'] = $server_auth['sid']; //записываем sid массив
-            $sid = $server_auth['sid'];
+            $this->sid = $server_auth['sid'];
+        } else {
+            return false;
         }
-        return $sid;
+        return true;
     }
-
 
     /**
      * function to get all server objects (channels, IP-devices etc.) Also it set up servers Name and Guid
@@ -128,7 +139,7 @@ class TrassirServer
      * @param string $sdk_password password for Trassir SDK
      * @return array
      */
-    public function getServerObjects(string $sdk_password)
+    public function getServerObjects()
     {
         if (is_null($this->ip)) {
             throw new \InvalidArgumentException('You myst set IP before auth');
@@ -136,7 +147,7 @@ class TrassirServer
         if (!$this->check_connection()) {
             throw new \InvalidArgumentException('Server is offline');
         }
-            $url = 'https://' . trim($this->ip) . ':8080/objects/?password=' . trim($sdk_password); //получения объектов сервера
+            $url = 'https://' . trim($this->ip) . ':8080/objects/?password=' . trim($this->sdk_password); //получения объектов сервера
             $responseJson_str = file_get_contents($url, NULL, $this->stream_context);
             $comment_position = strripos($responseJson_str, '/*');    //отрезаем комментарий в конце ответа сервера
             $responseJson_str = substr($responseJson_str, 0, $comment_position);
@@ -155,11 +166,10 @@ class TrassirServer
                     ];
                 }
             }
-
         return $objects;
     }
 
-    public function getHealth($sid) // запрос здоровья, возвращает массив
+    public function getHealth() // запрос здоровья, возвращает массив
     {
         if (is_null($this->ip)) {
             throw new \InvalidArgumentException('You myst set IP before auth');
@@ -167,10 +177,12 @@ class TrassirServer
         if (!$this->check_connection()) {
             throw new \InvalidArgumentException('Server is offline');
         }
-        if (empty($sid)) {
+        $this->auth();
+        echo $this->sid;
+        if (!$this->sid) {
             throw new \InvalidArgumentException('You should make authorization() first to get sid');
         }
-        $url = 'https://' . trim($this->ip) . ':8080/health?sid=' . trim($sid); //получение здоровья
+        $url = 'https://' . trim($this->ip) . ':8080/health?sid=' . trim($this->sid); //получение здоровья
         $responseJson_str = file_get_contents($url, null, $this->stream_context); //получаем состояние сервера по адресу
         $comment_position = strripos($responseJson_str, '/*');    //отрезаем комментарий в конце ответа сервера
         $responseJson_str = substr($responseJson_str, 0, $comment_position);
@@ -179,7 +191,7 @@ class TrassirServer
         $result = $server_health;
         if(!empty($this->channels)) {
             foreach ($this->channels as $channel) {
-                $url = 'https://' . trim($this->ip) . ':8080/settings/channels/' . $channel['guid'] . '/flags/signal?sid=' . trim($sid); //получения статуса канала
+                $url = 'https://' . trim($this->ip) . ':8080/settings/channels/' . $channel['guid'] . '/flags/signal?sid=' . trim($this->sid); //получения статуса канала
                 $responseJson_str = file_get_contents($url, NULL, $this->stream_context);
                 $comment_position = strripos($responseJson_str, '/*');    //отрезаем комментарий в конце ответа сервера
                 $responseJson_str = substr($responseJson_str, 0, $comment_position);
@@ -192,8 +204,6 @@ class TrassirServer
             }
         $result = array_merge($server_health, $channelsHealth);
         }
-
-
 
         return $result;
     }
