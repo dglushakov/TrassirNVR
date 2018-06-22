@@ -48,6 +48,17 @@ class TrassirServer
             'verify_peer_name' => false,
             'allow_self_signed' => true,
             'verify_depth' => 0]]);
+
+        if (is_null($this->ip)) {
+            throw new \InvalidArgumentException('You myst set IP before auth');
+        }
+        if (!$this->check_connection()) {
+            throw new \InvalidArgumentException('Server is offline');
+        }
+        $this->auth();
+        if (!$this->sid) {
+            throw new \InvalidArgumentException('Wrong username or password');
+        }
     }
 
     /**
@@ -87,7 +98,7 @@ class TrassirServer
      * Checking is NVR online or not to prevent errors
      * @return bool
      */
-    protected function check_connection()
+    private function check_connection()
     { //проверка доступности сервера.
         $status = false;
         $url = 'http://' . trim($this->ip) . ':80/';
@@ -106,21 +117,11 @@ class TrassirServer
 
     /**
      * Get sessionId (sid) using login and password
-     *
-     * @param string $user
-     * @param string $password
      * @return bool|string
      */
     private function auth()
     {
-        if (is_null($this->ip)) {
-            throw new \InvalidArgumentException('You myst set IP before auth');
-        }
-        if (!$this->check_connection()) {
-            throw new \InvalidArgumentException('Server is offline');
-        }
         $this->sid = false;
-
         $url = 'https://' . trim($this->ip) . ':8080/login?username=' . trim($this->user) . '&password=' . trim($this->password);
         $responseJson_str = file_get_contents($url, NULL, $this->stream_context);
         $server_auth = json_decode($responseJson_str, true); //переводим JSON в массив
@@ -140,55 +141,42 @@ class TrassirServer
      */
     public function getServerObjects()
     {
-        if (is_null($this->ip)) {
-            throw new \InvalidArgumentException('You myst set IP before auth');
-        }
-        if (!$this->check_connection()) {
-            throw new \InvalidArgumentException('Server is offline');
-        }
-            $url = 'https://' . trim($this->ip) . ':8080/objects/?password=' . trim($this->sdk_password); //получения объектов сервера
-            $responseJson_str = file_get_contents($url, NULL, $this->stream_context);
-            $comment_position = strripos($responseJson_str, '/*');    //отрезаем комментарий в конце ответа сервера
-            $responseJson_str = substr($responseJson_str, 0, $comment_position);
-            $objects = json_decode($responseJson_str, true);
+        $url = 'https://' . trim($this->ip) . ':8080/objects/?password=' . trim($this->sdk_password); //получения объектов сервера
+        $responseJson_str = file_get_contents($url, NULL, $this->stream_context);
+        $comment_position = strripos($responseJson_str, '/*');    //отрезаем комментарий в конце ответа сервера
+        $responseJson_str = substr($responseJson_str, 0, $comment_position);
+        $objects = json_decode($responseJson_str, true);
 
-            foreach ($objects as $obj) {
-                if ($obj['class']=='Server') {
-                    $this->name = $obj['name'];
-                    $this->guid = $obj['guid'];
-                }
-                if ($obj['class']=='Channel') {
-                    $this->channels[] = [
-                        'name' => $obj['name'],
-                        'guid' =>$obj ['guid'],
-                        'parent' =>$obj ['parent'],
-                    ];
-                }
+        foreach ($objects as $obj) {
+            if ($obj['class'] == 'Server') {
+                $this->name = $obj['name'];
+                $this->guid = $obj['guid'];
             }
+            if ($obj['class'] == 'Channel') {
+                $this->channels[] = [
+                    'name' => $obj['name'],
+                    'guid' => $obj ['guid'],
+                    'parent' => $obj ['parent'],
+                ];
+            }
+        }
         return $objects;
     }
 
-    public function getHealth() // запрос здоровья, возвращает массив
+    /**
+     * return array of indicators
+     * @return array|mixed
+     */
+    public function getHealth()
     {
-        if (is_null($this->ip)) {
-            throw new \InvalidArgumentException('You myst set IP before auth');
-        }
-        if (!$this->check_connection()) {
-            throw new \InvalidArgumentException('Server is offline');
-        }
-        $this->auth();
-
-        if (!$this->sid) {
-            throw new \InvalidArgumentException('You should make authorization() first to get sid');
-        }
-        $url = 'https://' . trim($this->ip) . ':8080/health?sid=' . trim($this->sid); //получение здоровья
-        $responseJson_str = file_get_contents($url, null, $this->stream_context); //получаем состояние сервера по адресу
+        $url = 'https://' . trim($this->ip) . ':8080/health?sid=' . trim($this->sid);
+        $responseJson_str = file_get_contents($url, null, $this->stream_context);
         $comment_position = strripos($responseJson_str, '/*');    //отрезаем комментарий в конце ответа сервера
         $responseJson_str = substr($responseJson_str, 0, $comment_position);
-        $server_health = json_decode($responseJson_str, true); //переводим JSON в массив
+        $server_health = json_decode($responseJson_str, true);
 
         $result = $server_health;
-        if(!empty($this->channels)) {
+        if (!empty($this->channels)) {
             foreach ($this->channels as $channel) {
                 $url = 'https://' . trim($this->ip) . ':8080/settings/channels/' . $channel['guid'] . '/flags/signal?sid=' . trim($this->sid); //получения статуса канала
                 $responseJson_str = file_get_contents($url, NULL, $this->stream_context);
@@ -196,43 +184,37 @@ class TrassirServer
                 $responseJson_str = substr($responseJson_str, 0, $comment_position);
                 $channelHealth = json_decode($responseJson_str, true);
 
-                $channelsHealth[]=[
+                $channelsHealth[] = [
                     'guid' => $channel['guid'],
                     'signal' => $channelHealth['value']
                 ];
             }
-        $result = array_merge($server_health, $channelsHealth);
+            $result = array_merge($server_health, $channelsHealth);
         }
 
         return $result;
     }
 
-    public function saveScreenshot(array $channel, $folder = 'shots',\DateTime $timestamp = null){
-        if (is_null($this->ip)) {
-            throw new \InvalidArgumentException('You myst set IP before auth');
-        }
-        if (!$this->check_connection()) {
-            throw new \InvalidArgumentException('Server is offline');
-        }
-        $this->auth();
-
-        if (!$this->sid) {
-            throw new \InvalidArgumentException('You should make authorization() first to get sid');
-        }
-
-        if($timestamp ) {
+    /**
+     * @param array $channel One of private $channels
+     * @param string $folder folder to save shots
+     * @param \DateTime|null $timestamp take last available shot if timestamp is null
+     * @return string url to image
+     */
+    public function saveScreenshot(array $channel, $folder = 'shots', \DateTime $timestamp = null)
+    {
+        if ($timestamp) {
             $time = $timestamp->format('Ymd-His');
         } else {
             $time = '0';
         }
-        //$time='0';
 
-        $img = 'https://' . trim($this->ip) . ':8080/screenshot/'.$channel['guid'].'?timestamp='.$time.'&sid='.trim($this->sid);
-        $path = $folder.'/shot_'.$channel['name'].rand(1,1000).$timestamp->format('YmdHis').'.jpg';
+        $img = 'https://' . trim($this->ip) . ':8080/screenshot/' . $channel['guid'] . '?timestamp=' . $time . '&sid=' . trim($this->sid);
+        $path = $folder . '/shot_' . $channel['name'] . rand(1, 1000) . $timestamp->format('YmdHis') . '.jpg';
         $curl = curl_init($img);
         curl_setopt($curl, CURLOPT_HEADER, 0);
         curl_setopt($curl, CURLOPT_RETURNTRANSFER, 1);
-        curl_setopt($curl, CURLOPT_BINARYTRANSFER,1);
+        curl_setopt($curl, CURLOPT_BINARYTRANSFER, 1);
         curl_setopt($curl, CURLOPT_SSL_VERIFYHOST, 0);
         curl_setopt($curl, CURLOPT_SSL_VERIFYPEER, 0);
         $content = curl_exec($curl);
@@ -240,13 +222,38 @@ class TrassirServer
         if (file_exists($path)) :
             unlink($path);
         endif;
-        $fp = fopen($path,'x');
+        $fp = fopen($path, 'x');
         fwrite($fp, $content);
         fclose($fp);
 
-        return $content;
+        return $img;
     }
 
+    /**
+     * @param array $channel
+     * @param string $stream should be main or sub
+     * @param string $container should be mjpeg|flv|jpeg
+     * @return bool|string return url to live video stream or false if failure
+     */
+    public function getLiveVideoStream(array $channel, string $stream = 'main', string $container = 'mjpeg')
+    {
 
+        $tokenUrl = 'https://' . trim($this->ip) . ':8080/get_video?channel=' . $channel['guid'] . '&container=' . $container . '&stream=' . $stream . '&sid=' . $this->sid;
+        $responseJson_str = file_get_contents($tokenUrl, null, $this->stream_context);
+        $comment_position = strripos($responseJson_str, '/*');    //отрезаем комментарий в конце ответа сервера
+        if ($comment_position) {
+            $responseJson_str = substr($responseJson_str, 0, $comment_position);
+        }
+        $token = json_decode($responseJson_str, true);
+
+        if ($token['success'] == 1) {
+            $videotoken = $token['token'];
+        } else {
+            throw new \InvalidArgumentException('Cann not get vieotoken');
+        }
+
+        $result = 'http://' . trim($this->ip) . ':555/' . $videotoken;
+        return $result;
+    }
 
 }
