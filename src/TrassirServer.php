@@ -210,7 +210,7 @@ class TrassirServer
         }
 
         $img = 'https://' . trim($this->ip) . ':8080/screenshot/' . $channel['guid'] . '?timestamp=' . $time . '&sid=' . trim($this->sid);
-        $path = $folder . '/shot_' . $channel['name'] . rand(1, 1000) . $timestamp->format('YmdHis') . '.jpg';
+        $path = $folder . '/shot_' . $channel['name'] . rand(1, 1000) . $time . '.jpg';
         $curl = curl_init($img);
         curl_setopt($curl, CURLOPT_HEADER, 0);
         curl_setopt($curl, CURLOPT_RETURNTRANSFER, 1);
@@ -255,5 +255,6 @@ class TrassirServer
         $result = 'http://' . trim($this->ip) . ':555/' . $videotoken;
         return $result;
     }
+
 
 }
