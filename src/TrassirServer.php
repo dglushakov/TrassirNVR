@@ -176,7 +176,7 @@ class TrassirServer
         $server_health = json_decode($responseJson_str, true);
 
         $result = $server_health;
-        if (!empty($this->channels)) {
+        if (!empty($this->channels) && ($this->channels)) {
             foreach ($this->channels as $channel) {
                 $url = 'https://' . trim($this->ip) . ':8080/settings/channels/' . $channel['guid'] . '/flags/signal?sid=' . trim($this->sid); //получения статуса канала
                 $responseJson_str = file_get_contents($url, NULL, $this->stream_context);
