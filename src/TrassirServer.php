@@ -28,7 +28,7 @@ class TrassirServer
 
     /**
      * Variable for storage sessidon id
-     * @var string $sid
+     * @var string|false $sid
      */
     private $sid;
     private $user;
@@ -49,7 +49,7 @@ class TrassirServer
             'allow_self_signed' => true,
             'verify_depth' => 0]]);
 
-        if (is_null($this->ip)) {
+        if (empty($this->ip)) {
             throw new \InvalidArgumentException('You myst set IP before auth');
         }
         if (!$this->check_connection()) {
@@ -223,8 +223,11 @@ class TrassirServer
             unlink($path);
         endif;
         $fp = fopen($path, 'x');
-        fwrite($fp, $content);
-        fclose($fp);
+        if ($fp)
+        {
+            fwrite($fp, $content);
+            fclose($fp);
+        }
 
         return $img;
     }
