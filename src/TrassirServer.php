@@ -24,7 +24,7 @@ class TrassirServer
      * array for handle list of channels from NMR
      * @var array $channels
      */
-    private $channels;
+    private $channels=[];
 
     /**
      * Variable for storage sessidon id
@@ -189,7 +189,7 @@ class TrassirServer
                     'signal' => $channelHealth['value']
                 ];
             }
-            if (!empty($channelsHealth) && isset($channelsHealth)) {
+            if (isset($channelsHealth) && !empty($channelsHealth) && is_array($channelsHealth) ) {
                 $result = array_merge($server_health, $channelsHealth);
             }
         }
