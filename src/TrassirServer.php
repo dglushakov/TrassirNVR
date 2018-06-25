@@ -175,6 +175,7 @@ class TrassirServer
         $responseJson_str = substr($responseJson_str, 0, $comment_position);
         $server_health = json_decode($responseJson_str, true);
 
+        $channelsHealth=[];
         $result = $server_health;
         if (!empty($this->channels)) {
             foreach ($this->channels as $channel) {
