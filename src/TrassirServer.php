@@ -224,7 +224,7 @@ class TrassirServer
         if (file_exists($path)){
             unlink($path);
         }
-        $fp = fopen($path, 'x');
+        $fp = @fopen($path, 'x');
         if ($fp) {
             fwrite($fp, $content);
             fclose($fp);
