@@ -189,7 +189,7 @@ class TrassirServer
                     'signal' => $channelHealth['value']
                 ];
             }
-            if (!empty($channelsHealth)) {
+            if (!empty($channelsHealth) && isset($channelsHealth)) {
                 $result = array_merge($server_health, $channelsHealth);
             }
         }
