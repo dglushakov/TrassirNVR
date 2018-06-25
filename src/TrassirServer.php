@@ -189,7 +189,9 @@ class TrassirServer
                     'signal' => $channelHealth['value']
                 ];
             }
-            $result = array_merge($server_health, $channelsHealth);
+            if (!empty($channelsHealth)) {
+                $result = array_merge($server_health, $channelsHealth);
+            }
         }
 
         return $result;
@@ -223,8 +225,7 @@ class TrassirServer
             unlink($path);
         endif;
         $fp = fopen($path, 'x');
-        if ($fp)
-        {
+        if ($fp) {
             fwrite($fp, $content);
             fclose($fp);
         }
