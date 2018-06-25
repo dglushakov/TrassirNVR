@@ -251,12 +251,12 @@ class TrassirServer
         $token = json_decode($responseJson_str, true);
 
         if ($token['success'] == 1) {
-            $videotoken = $token['token'];
+            $videoToken = $token['token'];
         } else {
             throw new \InvalidArgumentException('Cann not get vieotoken');
         }
 
-        $result = 'http://' . trim($this->ip) . ':555/' . $videotoken;
+        $result = 'http://' . trim($this->ip) . ':555/' . $videoToken;
         return $result;
     }
 
