@@ -226,7 +226,7 @@ class TrassirServer
             unlink($path);
         }
         $fp = @fopen($path, 'x');
-        if ($fp) {
+        if ($fp !== false) {
             fwrite($fp, $content);
             fclose($fp);
         }
