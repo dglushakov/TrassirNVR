@@ -1,8 +1,6 @@
 # TRASSIR 
 Library for work with Trassir NVRs.
 
-Simple usage:
-
 $server  = new TrassirServer('1.1.1.1', 'Login', 'Password', 'SDK_Password');
              
 $objects = $server->getServerObjects(); <br>
