@@ -1,6 +1,6 @@
 <?php
 
-namespace dglushakov\trassir;
+namespace Dglushakov\Trassir;
 
 
 class TrassirServer
@@ -24,40 +24,35 @@ class TrassirServer
      * array for handle list of channels from NMR
      * @var array $channels
      */
-    private $channels=[];
+    private $channels = [];
 
     /**
-     * Variable for storage sessidon id
+     * Variable for storage session id
      * @var string|false $sid
      */
     private $sid;
-    private $user;
+
+    private $userName;
     private $password;
     private $sdk_password;
 
     private $stream_context; //тут храним контекст который нужен CURL для работы с неподписанными сертификатами
 
-    public function __construct(string $ip, string $user, string $password, string $sdk_password)
+    public function __construct(string $ip, string $userName, string $password, string $sdk_password)
     {
-        $this->ip = $ip;
-        $this->user = $user;
-        $this->password = $password;
-        $this->sdk_password = $sdk_password;
-        $this->stream_context = stream_context_create(['ssl' => [  //разрешаем принимать самоподписанные сертификаты от NVR
-            'verify_peer' => false,
-            'verify_peer_name' => false,
-            'allow_self_signed' => true,
-            'verify_depth' => 0]]);
+        if (filter_var($ip, FILTER_VALIDATE_IP)) {
+            $this->ip = $ip;
+            $this->userName = $userName;
+            $this->password = $password;
+            $this->sdk_password = $sdk_password;
+            $this->stream_context = stream_context_create(['ssl' => [  //разрешаем принимать самоподписанные сертификаты от NVR
+                'verify_peer' => false,
+                'verify_peer_name' => false,
+                'allow_self_signed' => true,
+                'verify_depth' => 0]]);
 
-        if (empty($this->ip)) {
-            throw new \InvalidArgumentException('You myst set IP before auth');
-        }
-        if (!$this->check_connection()) {
-            throw new \InvalidArgumentException('Server is offline');
-        }
-        $this->auth();
-        if (!$this->sid) {
-            throw new \InvalidArgumentException('Wrong username or password');
+        } else {
+            throw new \InvalidArgumentException('Please enter valid IP address.');
         }
     }
 
@@ -93,14 +88,13 @@ class TrassirServer
         return $this->guid;
     }
 
-
     /**
      * Checking is NVR online or not to prevent errors
      * @return bool
      */
-    private function check_connection()
+    public function check_connection()
     { //проверка доступности сервера.
-        $status = false;
+        $connectionStatus = false;
         $url = 'http://' . trim($this->ip) . ':80/';
         $curlInit = curl_init($url);
         curl_setopt($curlInit, CURLOPT_CONNECTTIMEOUT, 2); //третий параметр - время ожидания ответа сервера в секундах
@@ -110,28 +104,28 @@ class TrassirServer
         $response = curl_exec($curlInit);
         curl_close($curlInit);
         if ($response) {
-            $status = true;
+            $connectionStatus = true;
         }
-        return $status;
+        return $connectionStatus;
     }
 
     /**
      * Get sessionId (sid) using login and password
      * @return bool|string
      */
-    private function auth()
+    public function auth()
     {
-        $this->sid = false;
-        $url = 'https://' . trim($this->ip) . ':8080/login?username=' . trim($this->user) . '&password=' . trim($this->password);
+        $url = 'https://' . trim($this->ip) . ':8080/login?username=' . trim($this->userName) . '&password=' . trim($this->password);
         $responseJson_str = file_get_contents($url, NULL, $this->stream_context);
         $server_auth = json_decode($responseJson_str, true); //переводим JSON в массив
         if ($server_auth['success'] == 1) {
             $this->sid = $server_auth['sid'];
         } else {
-            return false;
+            $this->sid = false;
         }
-        return true;
+        return $this->sid;
     }
+
 
     /**
      * function to get all server objects (channels, IP-devices etc.) Also it set up servers Name and Guid
@@ -175,7 +169,7 @@ class TrassirServer
         $responseJson_str = substr($responseJson_str, 0, $comment_position);
         $server_health = json_decode($responseJson_str, true);
 
-        $channelsHealth=[];
+        $channelsHealth = [];
         $result = $server_health;
         if (!empty($this->channels)) {
             foreach ($this->channels as $channel) {
@@ -186,11 +180,12 @@ class TrassirServer
                 $channelHealth = json_decode($responseJson_str, true);
 
                 $channelsHealth[] = [
+                    'name' => $channel['name'],
                     'guid' => $channel['guid'],
                     'signal' => $channelHealth['value']
                 ];
             }
-            if (isset($channelsHealth) && !empty($channelsHealth) && is_array($channelsHealth) ) {
+            if (isset($channelsHealth) && !empty($channelsHealth) && is_array($channelsHealth)) {
                 $result = array_merge($server_health, $channelsHealth);
             }
         }
@@ -221,17 +216,21 @@ class TrassirServer
         curl_setopt($curl, CURLOPT_SSL_VERIFYHOST, 0);
         curl_setopt($curl, CURLOPT_SSL_VERIFYPEER, 0);
         $content = curl_exec($curl);
-        curl_close($curl);
-        if (file_exists($path)){
-            unlink($path);
+        $response = json_decode($content, true);
+        if ($response['success'] === 0) {
+            return $response['error_code'];
+        } else {
+            curl_close($curl);
+            if (file_exists($path)) {
+                unlink($path);
+            }
+            $fp = fopen($path, 'x');
+            if ($fp !== false) {
+                fwrite($fp, $content);
+                fclose($fp);
+            }
+            return $path;
         }
-        $fp = @fopen($path, 'x');
-        if ($fp !== false) {
-            fwrite($fp, $content);
-            fclose($fp);
-        }
-
-        return $img;
     }
 
     /**
