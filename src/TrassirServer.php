@@ -34,17 +34,17 @@ class TrassirServer
 
     private $userName;
     private $password;
-    private $sdk_password;
+    private $sdkPassword;
 
     private $stream_context; //тут храним контекст который нужен CURL для работы с неподписанными сертификатами
 
-    public function __construct(string $ip, string $userName, string $password, string $sdk_password)
+    public function __construct(string $ip, string $userName=null, string $password=null, string $sdkPassword=null)
     {
         if (filter_var($ip, FILTER_VALIDATE_IP)) {
             $this->ip = $ip;
             $this->userName = $userName;
             $this->password = $password;
-            $this->sdk_password = $sdk_password;
+            $this->sdkPassword = $sdkPassword;
             $this->stream_context = stream_context_create(['ssl' => [  //разрешаем принимать самоподписанные сертификаты от NVR
                 'verify_peer' => false,
                 'verify_peer_name' => false,
@@ -54,6 +54,31 @@ class TrassirServer
         } else {
             throw new \InvalidArgumentException('Please enter valid IP address.');
         }
+    }
+
+
+    public function setUserName($userName){
+        $this->userName = $userName;
+    }
+
+    public function getUserName(){
+        return $this->userName;
+    }
+
+    public function setPassword($password){
+        $this->password = $password;
+    }
+
+    public function getPassword(){
+        return $this->password;
+    }
+
+    public function setSdkPassword($sdkpassword){
+        $this->sdkPassword = $sdkpassword;
+    }
+
+    public function getSdkPassword(){
+        return $this->sdkPassword;
     }
 
     /**
@@ -92,18 +117,12 @@ class TrassirServer
      * Checking is NVR online or not to prevent errors
      * @return bool
      */
-    public function check_connection()
+    public function checkConnection()
     { //проверка доступности сервера.
         $connectionStatus = false;
         $url = 'http://' . trim($this->ip) . ':80/';
-        $curlInit = curl_init($url);
-        curl_setopt($curlInit, CURLOPT_CONNECTTIMEOUT, 2); //третий параметр - время ожидания ответа сервера в секундах
-        curl_setopt($curlInit, CURLOPT_HEADER, true);
-        curl_setopt($curlInit, CURLOPT_NOBODY, true);
-        curl_setopt($curlInit, CURLOPT_RETURNTRANSFER, true);
-        $response = curl_exec($curlInit);
-        curl_close($curlInit);
-        if ($response) {
+        $content = @file_get_contents($url, false, $this->stream_context);
+        if ($content) {
             $connectionStatus = true;
         }
         return $connectionStatus;
@@ -113,7 +132,7 @@ class TrassirServer
      * Get sessionId (sid) using login and password
      * @return bool|string
      */
-    public function auth()
+    public function login()
     {
         $url = 'https://' . trim($this->ip) . ':8080/login?username=' . trim($this->userName) . '&password=' . trim($this->password);
         $responseJson_str = file_get_contents($url, NULL, $this->stream_context);
@@ -135,7 +154,7 @@ class TrassirServer
      */
     public function getServerObjects()
     {
-        $url = 'https://' . trim($this->ip) . ':8080/objects/?password=' . trim($this->sdk_password); //получения объектов сервера
+        $url = 'https://' . trim($this->ip) . ':8080/objects/?password=' . trim($this->sdkPassword); //получения объектов сервера
         $responseJson_str = file_get_contents($url, NULL, $this->stream_context);
         $comment_position = strripos($responseJson_str, '/*');    //отрезаем комментарий в конце ответа сервера
         $responseJson_str = substr($responseJson_str, 0, $comment_position);
