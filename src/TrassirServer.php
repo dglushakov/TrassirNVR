@@ -67,10 +67,6 @@ class TrassirServer
         }
     }
 
-    public function test(){
-        echo 'test';
-    }
-
     public function setUserName($userName){
         $this->userName = $userName;
     }
