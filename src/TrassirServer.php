@@ -32,11 +32,22 @@ class TrassirServer
      */
     private $sid;
 
+    /**
+     * @var string $userName
+     */
     private $userName;
+
+    /**
+     * @var string $password
+     */
     private $password;
+
+    /**
+     * @var string $sdkPassword
+     */
     private $sdkPassword;
 
-    private $stream_context; //тут храним контекст который нужен CURL для работы с неподписанными сертификатами
+    private $stream_context; //тут храним контекст который нужен CURL или file_get_content для работы с неподписанными сертификатами
 
     public function __construct(string $ip, string $userName=null, string $password=null, string $sdkPassword=null)
     {
@@ -56,6 +67,9 @@ class TrassirServer
         }
     }
 
+    public function test(){
+        echo 'test';
+    }
 
     public function setUserName($userName){
         $this->userName = $userName;
@@ -118,14 +132,20 @@ class TrassirServer
      * @return bool
      */
     public function checkConnection()
-    { //проверка доступности сервера.
-        $connectionStatus = false;
+    {
+        $status = false;
         $url = 'http://' . trim($this->ip) . ':80/';
-        $content = @file_get_contents($url, false, $this->stream_context);
-        if ($content) {
-            $connectionStatus = true;
+        $curlInit = curl_init($url);
+        curl_setopt($curlInit, CURLOPT_CONNECTTIMEOUT, 2); //третий параметр - время ожидания ответа сервера в секундах
+        curl_setopt($curlInit, CURLOPT_HEADER, true);
+        curl_setopt($curlInit, CURLOPT_NOBODY, true);
+        curl_setopt($curlInit, CURLOPT_RETURNTRANSFER, true);
+        $response = curl_exec($curlInit);
+        curl_close($curlInit);
+        if ($response) {
+            $status = true;
         }
-        return $connectionStatus;
+        return $status;
     }
 
     /**
@@ -183,6 +203,7 @@ class TrassirServer
     public function getHealth()
     {
         $url = 'https://' . trim($this->ip) . ':8080/health?sid=' . trim($this->sid);
+
         $responseJson_str = file_get_contents($url, null, $this->stream_context);
         $comment_position = strripos($responseJson_str, '/*');    //отрезаем комментарий в конце ответа сервера
         $responseJson_str = substr($responseJson_str, 0, $comment_position);
@@ -212,6 +233,38 @@ class TrassirServer
         return $result;
     }
 
+    public function getServerSettings() {
+        $serverSettings=[];
+        $url = 'https://' . trim($this->ip) . ':8080/settings/?sid=' . trim($this->sid);
+        $responseJson_str = file_get_contents($url, null, $this->stream_context);
+        $comment_position = strripos($responseJson_str, '/*');    //отрезаем комментарий в конце ответа сервера
+        $responseJson_str = substr($responseJson_str, 0, $comment_position);
+        $serverSettings = json_decode($responseJson_str, true);
+
+
+
+        return $serverSettings;
+    }
+
+    public function getUsers() {
+        $Users=[];
+        $url = 'https://' . trim($this->ip) . ':8080/settings/users/?sid=' . trim($this->sid);
+        $responseJson_str = file_get_contents($url, null, $this->stream_context);
+        $comment_position = strripos($responseJson_str, '/*');    //отрезаем комментарий в конце ответа сервера
+        $responseJson_str = substr($responseJson_str, 0, $comment_position);
+        $Users = json_decode($responseJson_str, true);
+        return $Users;
+    }
+
+    public function getUserSettings($guid) {
+        $UserSettings=[];
+        $url = 'https://' . trim($this->ip) . ':8080/settings/users/'.$guid.'/name?password=' . trim($this->sdkPassword);
+        $responseJson_str = file_get_contents($url, null, $this->stream_context);
+        $comment_position = strripos($responseJson_str, '/*');    //отрезаем комментарий в конце ответа сервера
+        $responseJson_str = substr($responseJson_str, 0, $comment_position);
+        $UserSettings = json_decode($responseJson_str, true);
+        return $UserSettings;
+    }
     /**
      * @param array $channel One of private $channels
      * @param string $folder folder to save shots
