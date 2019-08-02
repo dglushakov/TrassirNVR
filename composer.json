@@ -10,7 +10,7 @@
   ],
   "autoload": {
     "psr-4": {
-      "dglushakov\\trassir\\": "src"
+      "Dglushakov\\Trassir\\": "src/"
     }
   },
   "require-dev": {
