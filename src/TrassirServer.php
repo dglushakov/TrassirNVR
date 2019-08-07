@@ -1,5 +1,4 @@
 <?php
-
 namespace Dglushakov\Trassir;
 
 
@@ -31,6 +30,7 @@ class TrassirServer
      * @var string|false $sid
      */
     private $sid;
+    private $sidExpiresAt;
 
     /**
      * @var string $userName
@@ -61,7 +61,7 @@ class TrassirServer
                 'verify_peer_name' => false,
                 'allow_self_signed' => true,
                 'verify_depth' => 0]]);
-
+            $this->login();
         } else {
             throw new \InvalidArgumentException('Please enter valid IP address.');
         }
@@ -150,11 +150,17 @@ class TrassirServer
      */
     public function login()
     {
+        if(isset($this->sid) && ($this->sid!==false) && isset($this->sidExpiresAt) && ($this->sidExpiresAt> new \DateTime()))
+        {
+            return $this->sid;
+        }
         $url = 'https://' . trim($this->ip) . ':8080/login?username=' . trim($this->userName) . '&password=' . trim($this->password);
         $responseJson_str = file_get_contents($url, NULL, $this->stream_context);
         $server_auth = json_decode($responseJson_str, true); //переводим JSON в массив
         if ($server_auth['success'] == 1) {
             $this->sid = $server_auth['sid'];
+            $this->sidExpiresAt = new \DateTime();
+            $this->sidExpiresAt->modify('+15 minutes');
         } else {
             $this->sid = false;
         }
@@ -198,6 +204,7 @@ class TrassirServer
      */
     public function getHealth()
     {
+        $this->login();
         $url = 'https://' . trim($this->ip) . ':8080/health?sid=' . trim($this->sid);
 
         $responseJson_str = file_get_contents($url, null, $this->stream_context);
@@ -236,8 +243,6 @@ class TrassirServer
         $comment_position = strripos($responseJson_str, '/*');    //отрезаем комментарий в конце ответа сервера
         $responseJson_str = substr($responseJson_str, 0, $comment_position);
         $serverSettings = json_decode($responseJson_str, true);
-
-
 
         return $serverSettings;
     }
