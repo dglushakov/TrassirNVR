@@ -35,7 +35,7 @@ class TrassirServer
     /**
      * @var string $userName
      */
-    private $userName;
+    private $users;
 
     /**
      * @var string $password
@@ -47,6 +47,11 @@ class TrassirServer
      */
     private $sdkPassword;
 
+    private $serverObjects;
+
+    private $serviceAccountNames = [
+        'Admin', 'Operator', 'Script', 'Demo', 'user_add', 'Monitoring',
+    ];
     private $stream_context; //тут храним контекст который нужен CURL или file_get_content для работы с неподписанными сертификатами
 
     public function __construct(string $ip, string $userName=null, string $password=null, string $sdkPassword=null)
@@ -61,7 +66,6 @@ class TrassirServer
                 'verify_peer_name' => false,
                 'allow_self_signed' => true,
                 'verify_depth' => 0]]);
-            $this->login();
         } else {
             throw new \InvalidArgumentException('Please enter valid IP address.');
         }
@@ -127,7 +131,7 @@ class TrassirServer
      * Checking is NVR online or not to prevent errors
      * @return bool
      */
-    public function checkConnection()
+    private function checkConnection()
     {
         $status = false;
         $url = 'http://' . trim($this->ip) . ':80/';
@@ -148,7 +152,7 @@ class TrassirServer
      * Get sessionId (sid) using login and password
      * @return bool|string
      */
-    public function login()
+    private function login()
     {
         if(isset($this->sid) && ($this->sid!==false) && isset($this->sidExpiresAt) && ($this->sidExpiresAt> new \DateTime()))
         {
@@ -176,6 +180,14 @@ class TrassirServer
      */
     public function getServerObjects()
     {
+        if(!$this->checkConnection()){
+            return false;
+        }
+
+        if(!$this->login()){
+            return false;
+        }
+        $objects=[];
         $url = 'https://' . trim($this->ip) . ':8080/objects/?password=' . trim($this->sdkPassword); //получения объектов сервера
         $responseJson_str = file_get_contents($url, NULL, $this->stream_context);
         $comment_position = strripos($responseJson_str, '/*');    //отрезаем комментарий в конце ответа сервера
@@ -195,6 +207,10 @@ class TrassirServer
                 ];
             }
         }
+
+        $objects['Users']=$this->getUsers();
+        $this->serverObjects = $objects;
+
         return $objects;
     }
 
@@ -254,10 +270,32 @@ class TrassirServer
         $comment_position = strripos($responseJson_str, '/*');    //отрезаем комментарий в конце ответа сервера
         $responseJson_str = substr($responseJson_str, 0, $comment_position);
         $Users = json_decode($responseJson_str, true);
-        return $Users;
+        $this->users = $Users['subdirs'];
+        return $this->users;
     }
 
-    public function getUserSettings($guid) {
+
+    public function getUserNames() {
+        $UserNames=[];
+        foreach ($this->users as $user) {
+            $url = 'https://' . trim($this->ip) . ':8080/settings/users/'.$user.'/name?password=' . trim($this->sdkPassword);
+            $responseJson_str = file_get_contents($url, null, $this->stream_context);
+            $comment_position = strripos($responseJson_str, '/*');    //отрезаем комментарий в конце ответа сервера
+            $responseJson_str = substr($responseJson_str, 0, $comment_position);
+            $res[] = json_decode($responseJson_str, true);
+        }
+
+        foreach ($res as $userDetails) {
+            if(isset($userDetails['value']) && (!in_array($userDetails['value'], $this->serviceAccountNames)) ){
+                $UserNames[] = $userDetails['value'];
+            }
+
+        }
+
+        return $UserNames;
+    }
+
+    private function getUserSettings($guid) {
         $UserSettings=[];
         $url = 'https://' . trim($this->ip) . ':8080/settings/users/'.$guid.'/name?password=' . trim($this->sdkPassword);
         $responseJson_str = file_get_contents($url, null, $this->stream_context);
@@ -266,6 +304,7 @@ class TrassirServer
         $UserSettings = json_decode($responseJson_str, true);
         return $UserSettings;
     }
+
     /**
      * @param array $channel One of private $channels
      * @param string $folder folder to save shots
