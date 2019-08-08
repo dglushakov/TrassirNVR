@@ -35,7 +35,7 @@ class TrassirServer
     /**
      * @var string $userName
      */
-    private $users;
+    private $userName;
 
     /**
      * @var string $password
@@ -49,6 +49,7 @@ class TrassirServer
 
     private $serverObjects;
 
+    private $trassirUsers;
     private $serviceAccountNames = [
         'Admin', 'Operator', 'Script', 'Demo', 'user_add', 'Monitoring',
     ];
@@ -176,7 +177,7 @@ class TrassirServer
      * function to get all server objects (channels, IP-devices etc.) Also it set up servers Name and Guid
      * also fills $this->channels array
      *
-     * @return array
+     * @return array|bool
      */
     public function getServerObjects()
     {
@@ -187,7 +188,7 @@ class TrassirServer
         if(!$this->login()){
             return false;
         }
-        $objects=[];
+
         $url = 'https://' . trim($this->ip) . ':8080/objects/?password=' . trim($this->sdkPassword); //получения объектов сервера
         $responseJson_str = file_get_contents($url, NULL, $this->stream_context);
         $comment_position = strripos($responseJson_str, '/*');    //отрезаем комментарий в конце ответа сервера
@@ -209,6 +210,7 @@ class TrassirServer
         }
 
         $objects['Users']=$this->getUsers();
+        $objects['UserNames']=$this->getUserNames();
         $this->serverObjects = $objects;
 
         return $objects;
@@ -270,14 +272,14 @@ class TrassirServer
         $comment_position = strripos($responseJson_str, '/*');    //отрезаем комментарий в конце ответа сервера
         $responseJson_str = substr($responseJson_str, 0, $comment_position);
         $Users = json_decode($responseJson_str, true);
-        $this->users = $Users['subdirs'];
-        return $this->users;
+        $this->trassirUsers = $Users['subdirs'];
+        return $this->trassirUsers;
     }
 
 
     public function getUserNames() {
         $UserNames=[];
-        foreach ($this->users as $user) {
+        foreach ($this->trassirUsers as $user) {
             $url = 'https://' . trim($this->ip) . ':8080/settings/users/'.$user.'/name?password=' . trim($this->sdkPassword);
             $responseJson_str = file_get_contents($url, null, $this->stream_context);
             $comment_position = strripos($responseJson_str, '/*');    //отрезаем комментарий в конце ответа сервера
@@ -285,13 +287,13 @@ class TrassirServer
             $res[] = json_decode($responseJson_str, true);
         }
 
-        foreach ($res as $userDetails) {
-            if(isset($userDetails['value']) && (!in_array($userDetails['value'], $this->serviceAccountNames)) ){
-                $UserNames[] = $userDetails['value'];
+        if(!empty($res)){
+            foreach ($res as $userDetails) {
+                if(isset($userDetails['value']) && (!in_array($userDetails['value'], $this->serviceAccountNames)) ){
+                    $UserNames[] = $userDetails['value'];
+                }
             }
-
         }
-
         return $UserNames;
     }
 
