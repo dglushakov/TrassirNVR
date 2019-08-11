@@ -2,6 +2,8 @@
 namespace Dglushakov\Trassir;
 
 
+use mysql_xdevapi\Exception;
+
 class TrassirServer
 {
     /**
@@ -222,7 +224,13 @@ class TrassirServer
      */
     public function getHealth()
     {
-        $this->login();
+        if(!$this->checkConnection()){
+            return false;
+        }
+
+        if(!$this->login()){
+            return false;
+        }
         $url = 'https://' . trim($this->ip) . ':8080/health?sid=' . trim($this->sid);
 
         $responseJson_str = file_get_contents($url, null, $this->stream_context);
