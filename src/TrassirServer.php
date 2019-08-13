@@ -125,7 +125,7 @@ class TrassirServer
     /**
      * @return string
      */
-    public function getGuid(): string
+    public function getGuid()
     {
         return $this->guid;
     }
