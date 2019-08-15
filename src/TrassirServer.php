@@ -162,7 +162,7 @@ class TrassirServer
             return $this->sid;
         }
         $url = 'https://' . trim($this->ip) . ':8080/login?username=' . trim($this->userName) . '&password=' . trim($this->password);
-        if(false ==!($responseJson_str = @file_get_contents($url, NULL, $this->stream_context))){
+        if(false ===($responseJson_str = @file_get_contents($url, NULL, $this->stream_context))){
             return false;
         }
         $server_auth = json_decode($responseJson_str, true); //переводим JSON в массив
