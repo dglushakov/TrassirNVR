@@ -262,7 +262,7 @@ class TrassirServer
             }
             if (isset($channelsHealth) && !empty($channelsHealth) && is_array($channelsHealth)) {
                 //$result = array_merge($server_health, $channelsHealth);
-                $result[]=$channelsHealth;
+                $result['channels_health']=$channelsHealth;
             }
         }
 
