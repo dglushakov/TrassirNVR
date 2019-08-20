@@ -233,6 +233,10 @@ class TrassirServer
         if(!$this->login()){
             return false;
         }
+
+        if(!$this->getServerObjects()){
+            return false;
+        }
         $url = 'https://' . trim($this->ip) . ':8080/health?sid=' . trim($this->sid);
 
         $responseJson_str = file_get_contents($url, null, $this->stream_context);
@@ -257,7 +261,8 @@ class TrassirServer
                 ];
             }
             if (isset($channelsHealth) && !empty($channelsHealth) && is_array($channelsHealth)) {
-                $result = array_merge($server_health, $channelsHealth);
+                //$result = array_merge($server_health, $channelsHealth);
+                $result[]=$channelsHealth;
             }
         }
 
